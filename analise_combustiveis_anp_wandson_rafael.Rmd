@@ -1,0 +1,139 @@
+# =============================================================================
+# PROVA TÉCNICA – MACROECONOMIA – CASE: MERCADO DE COMBUSTÍVEIS               #
+# Candidato: Wandson Rafael dos Santos                                        #
+# Data: 29/08/2025                                                            #
+# Repositório GitHub:                                                         #
+# =============================================================================
+
+# Análise Exploratória de Dados - Vendas de Combustíveis por Estado (ANP)
+# Objetivo: Investigar sazonalidade, distribuição geográfica e evolução do mercado.
+
+#Definindo o diretório de trabalho
+
+setwd("D:/Macroeconomics Analyst")
+
+# Instalar os pacotes (apenas se for a primeira vez)
+# install.packages("readxl")
+# install.packages("dplyr")
+# install.packages("tidyr")
+# install.packages("ggplot2")
+# install.packages("lubridate")
+
+# Carregar os pacotes
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(ggplot2)
+
+# 1. Carregar e combinar os dados
+
+# Ler a aba 'diesel'
+df_diesel <- read_excel("Prova_macro_Case 1.xlsx", sheet = "diesel") %>%
+  mutate(combustivel = "diesel")
+
+# Ler a aba 'gasolina'
+df_gasolina <- read_excel("Prova_macro_Case 1.xlsx", sheet = "gasolina") %>%
+  mutate(combustivel = "gasolina")
+
+# Ler a aba 'etanol'
+df_etanol <- read_excel("Prova_macro_Case 1.xlsx", sheet = "etanol") %>%
+  mutate(combustivel = "etanol")
+
+# Juntar os três dataframes em um único
+df <- bind_rows(df_diesel, df_gasolina, df_etanol)
+
+# Juntar os três dataframes em um único
+df <- bind_rows(df_diesel, df_gasolina, df_etanol)
+
+# 2. Converter para o formato longo (long format)
+# Isso transforma as colunas de anos em uma única coluna 'ano' e outra 'vendas'
+df_long <- df %>%
+  pivot_longer(
+    cols = as.character(2000:2021),
+    names_to = "ano",
+    values_to = "vendas"
+  ) %>%
+  # Limpar e converter os tipos de dados
+  mutate(
+    ano = as.integer(ano),
+    mes = meses,
+    data = ymd(paste0(ano, "-", mes, "-01"))
+  ) %>%
+  select(regiao, mes, ano, combustivel, vendas, data)
+
+# Vamos responder às perguntas.
+
+# Pergunta 1: Qual é a sazonalidade da venda de combustíveis?
+vendas_por_mes <- df_long %>%
+  group_by(mes) %>%
+  summarise(vendas_totais = sum(vendas, na.rm = TRUE)) %>%
+  ungroup()
+
+# Gráfico da sazonalidade
+ggplot(vendas_por_mes, aes(x = mes, y = vendas_totais)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Sazonalidade da Venda de Combustíveis",
+    x = "Mês",
+    y = "Vendas Totais (m³)"
+  ) +
+  scale_x_continuous(breaks = 1:12, labels = month.abb) +
+  theme_minimal()
+
+# Pergunta 2: Essa sazonalidade é a mesma em todos os estados?
+vendas_estado_mes <- df_long %>%
+  group_by(regiao, mes) %>%
+  summarise(vendas_totais = sum(vendas, na.rm = TRUE)) %>%
+  ungroup()
+
+# Gráfico da sazonalidade por estado
+ggplot(vendas_estado_mes, aes(x = mes, y = vendas_totais)) +
+  geom_line() +
+  labs(
+    title = "Sazonalidade da Venda de Combustíveis por Estado",
+    x = "Mês",
+    y = "Vendas Totais (m³)"
+  ) +
+  scale_x_continuous(breaks = 1:12) +
+  facet_wrap(~ regiao, scales = "free_y") +
+  theme_minimal()
+
+# Pergunta 3: Como o consumo de cada tipo de combustível está distribuído entre os estados brasileiros?
+vendas_estado_combustivel <- df_long %>%
+  group_by(regiao, combustivel) %>%
+  summarise(vendas_totais = sum(vendas, na.rm = TRUE)) %>%
+  ungroup()
+
+# Gráfico da distribuição por estado e combustível
+ggplot(vendas_estado_combustivel, aes(x = regiao, y = vendas_totais, fill = combustivel)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "Distribuição do Consumo de Combustíveis por Estado",
+    x = "Estado",
+    y = "Vendas Totais (m³)",
+    fill = "Combustível"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+# Pergunta 4: Qual é o tamanho total do mercado e como ele evoluiu durante os últimos 5 anos?
+df_ultimos_5_anos <- df_long %>%
+  filter(ano >= max(ano) - 4) %>%
+  group_by(ano) %>%
+  summarise(vendas_totais = sum(vendas, na.rm = TRUE)) %>%
+  ungroup()
+
+# Gráfico da evolução do mercado nos últimos 5 anos
+ggplot(df_ultimos_5_anos, aes(x = ano, y = vendas_totais)) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Evolução do Tamanho Total do Mercado de Combustíveis (Últimos 5 anos)",
+    x = "Ano",
+    y = "Vendas Totais (m³)"
+  ) +
+  scale_x_continuous(breaks = df_ultimos_5_anos$ano) +
+  theme_minimal()
+
